@@ -12,7 +12,11 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from commons.renderer import CsvRenderer, ExcelRenderer, PdfRenderer
-from commons.throttles import AnonUserRateThrottle, FreeUserRateThrottle
+from commons.throttles import (
+    AnonUserRateThrottle,
+    FreeUserRateThrottle,
+    PaidUserRateThrottle,
+)
 from helpers.data_generator import DataGenerator
 from helpers.unique_id import device_id
 
@@ -33,6 +37,8 @@ class DummyData(APIView, DataGenerator):
     def get_throttles(self):
         if not self.request.user.is_authenticated:
             return [AnonUserRateThrottle()]
+        elif self.request.user.is_paiduser:
+            return [PaidUserRateThrottle()]
         return [FreeUserRateThrottle()]
 
     def get(self, request):
@@ -53,20 +59,21 @@ class DummyData(APIView, DataGenerator):
         data_range = min(max_data_range, data_range)
 
         try:
-            seed_value = (
-                (request.query_params.get("seed"))
-                if request.user.is_authenticated
-                else device_id(request)
-            )
-            if request.user.is_authenticated and seed_value is not None:
-                user_id = str(request.user.id)
-                combined_seed = f"{seed_value}_{user_id}"
-                hashed_seed = int(
-                    hashlib.md5(combined_seed.encode("utf-8")).hexdigest(), 16
-                ) % (10**8)
-                self.fake.seed_instance(hashed_seed)
-            else:
-                self.fake.seed_instance(seed_value)
+            if request.user.is_paiduser:
+                seed_value = (
+                    (request.query_params.get("seed"))
+                    if request.user.is_authenticated
+                    else device_id(request)
+                )
+                if request.user.is_authenticated and seed_value is not None:
+                    user_id = str(request.user.id)
+                    combined_seed = f"{seed_value}_{user_id}"
+                    hashed_seed = int(
+                        hashlib.md5(combined_seed.encode("utf-8")).hexdigest(), 16
+                    ) % (10**8)
+                    self.fake.seed_instance(hashed_seed)
+                else:
+                    self.fake.seed_instance(seed_value)
         except TypeError:
             pass
 
@@ -98,11 +105,11 @@ class DummyData(APIView, DataGenerator):
         filename = "data"
         renderer = request.accepted_renderer
         if isinstance(renderer, PdfRenderer):
-            filename += '.pdf'
+            filename += ".pdf"
         elif isinstance(renderer, CsvRenderer):
-            filename += '_csv.zip'
+            filename += "_csv.zip"
         elif isinstance(renderer, ExcelRenderer):
-            filename += '.xlsx'
+            filename += ".xlsx"
         else:
             response_data = {"data": grouped_data}
             return Response(response_data)
@@ -110,7 +117,7 @@ class DummyData(APIView, DataGenerator):
         response_data = {"data": grouped_data}
         response = Response(response_data)
         # Content negotiation will select the ExcelRenderer if the client requests 'excel'
-        response["Content-Disposition"] = f'attachment; filename={filename}'
+        response["Content-Disposition"] = f"attachment; filename={filename}"
         return response
 
 

@@ -35,7 +35,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(methods=["post"], detail=False, url_path="create-order", url_name="create-order")
     def create_order(self, request, *args, **kwargs):
-        price = Plan.objects.first().price
+        
         existing_order = Order.objects.filter(user=request.user, paid=False).first()
         if existing_order:
             # Serialize the existing order and return it in a response
@@ -49,8 +49,10 @@ class OrderViewSet(viewsets.ModelViewSet):
             sub_plan = serializer.validated_data.get("plan")
             if sub_plan.name == "Annual":
                 duration = 12
+                price = Plan.objects.get(name=sub_plan.name).price
             else:
                 duration = serializer.validated_data.get('duration')
+                price = Plan.objects.get(name=sub_plan.name).price
             end_date = timezone.now() + timedelta(days=30 * duration)
             order = Order(
                 user = serializer.validated_data.get('user'),

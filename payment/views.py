@@ -117,7 +117,7 @@ class PaymentViewSets(viewsets.ViewSet):
                     currency="NGN",
                     verified=False,
                     transaction_id=transaction_id,
-                    expiration_date=timezone.now()
+                    expiration_date=timezone.now(),
                 )
                 return Response(payment_info["data"], status=status.HTTP_200_OK)
 
@@ -145,23 +145,33 @@ class PaystackWebhookView(APIView):
                 paid_at = data.get("paid_at")
                 try:
                     # Try parsing with microseconds
-                    paid_at_datetime = datetime.strptime(paid_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+                    paid_at_datetime = datetime.strptime(
+                        paid_at, "%Y-%m-%dT%H:%M:%S.%fZ"
+                    )
                 except ValueError:
                     # Fallback for when there are no microseconds
-                    paid_at_datetime = datetime.strptime(paid_at, "%Y-%m-%dT%H:%M:%S.%fZ"[:-3])
+                    paid_at_datetime = datetime.strptime(
+                        paid_at, "%Y-%m-%dT%H:%M:%S.%fZ"[:-3]
+                    )
 
                 # Convert the naive datetime to an aware datetime with the current timezone
-                paid_at_datetime = timezone.make_aware(paid_at_datetime, dt_timezone.utc)
+                paid_at_datetime = timezone.make_aware(
+                    paid_at_datetime, dt_timezone.utc
+                )
                 paid_at_datetime = timezone.localtime(paid_at_datetime)
 
                 if order.plan.name == "Annual":
                     payment.expiration_date = paid_at_datetime + relativedelta(years=1)
-
+                else:
+                    duration = order.duration
+                    payment.expiration_date = paid_at_datetime + relativedelta(
+                        months=duration
+                    )
                 payment.timestamp = paid_at_datetime
                 payment.verified = True
                 payment.save()
-
                 order.paid = True
+                order.user.is_paiduser = True
                 order.end_date = paid_at_datetime + relativedelta(years=1)
                 order.order_status = "Completed"
                 order.save()
@@ -183,4 +193,3 @@ class PaystackWebhookView(APIView):
                 )
 
         return Response({"message": "Webhook received"}, status=status.HTTP_200_OK)
-

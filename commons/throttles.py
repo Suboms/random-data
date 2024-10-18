@@ -33,7 +33,7 @@ class AnonUserRateThrottle(SimpleRateThrottle):
 class FreeUserRateThrottle(SimpleRateThrottle):
     scope = "free"
     rate = "500/min"
-    max_data_range = 10000
+    max_data_range = 1000
 
     def get_cache_key(self, request, view):
         if request.user and request.user.is_authenticated:
@@ -43,6 +43,7 @@ class FreeUserRateThrottle(SimpleRateThrottle):
 
         return self.cache_format % {"scope": self.scope, "ident": ident}
 
-# class PaidUserRateThrottle(UserRateThrottle):
-#     scope = 'paid'
-#     rate = '2000/min'
+class PaidUserRateThrottle(FreeUserRateThrottle):
+    scope = 'paid'
+    rate = '2000/min'
+    max_data_range = 10000
