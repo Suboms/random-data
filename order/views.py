@@ -33,36 +33,79 @@ class OrderViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         raise MethodNotAllowed(method="destroy")
 
-    @action(methods=["post"], detail=False, url_path="create-order", url_name="create-order")
+    @action(
+        methods=["post"], detail=False, url_path="create-order", url_name="create-order"
+    )
     def create_order(self, request, *args, **kwargs):
-        
-        existing_order = Order.objects.filter(user=request.user, paid=False).first()
-        if existing_order:
-            # Serialize the existing order and return it in a response
-            serializer = OrderSerializer(existing_order)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+        # Check for unpaid existing order
+        unpaid_order = Order.objects.filter(user=request.user, paid=False).first()
+        if unpaid_order:
+            # Return the existing unpaid order
+            serializer = OrderSerializer(unpaid_order)
+            return Response(
+                {
+                    "message": "An unpaid order already exists.",
+                    "order": serializer.data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Check for active paid order (end date greater than current date)
+        active_paid_order = Order.objects.filter(
+            user=request.user, paid=True, end_date__gt=timezone.now()
+        ).first()
+        if active_paid_order:
+            serializer = OrderSerializer(active_paid_order)
+            return Response(
+                {
+                    "message": "An active paid order already exists and has not expired.",
+                    "order": serializer.data["id"],
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Proceed to create a new order if no unpaid or active orders are found
         try:
-            # serializer = self.get_serializer(data = request.data)
-            serializer = OrderSerializer(data=request.data, context={'request': request})
+            serializer = OrderSerializer(
+                data=request.data, context={"request": request}
+            )
             serializer.is_valid(raise_exception=True)
-            
+
             sub_plan = serializer.validated_data.get("plan")
-            if sub_plan.name == "Annual":
-                duration = 12
-                price = Plan.objects.get(name=sub_plan.name).price
-            else:
-                duration = serializer.validated_data.get('duration')
-                price = Plan.objects.get(name=sub_plan.name).price
+            plan_name = sub_plan.name
+            duration = (
+                12
+                if plan_name == "Annual"
+                else serializer.validated_data.get("duration")
+            )
+            price = Plan.objects.get(name=plan_name).price
+
+            # Calculate end date based on duration in months
             end_date = timezone.now() + timedelta(days=30 * duration)
+
+            # Create and save the new order
             order = Order(
-                user = serializer.validated_data.get('user'),
-                reference = UniqueId.generate_id(),
-                duration = duration,
-                end_date = end_date,
-                plan = serializer.validated_data.get("plan"),
-                total_amount = duration * price
+                user=request.user,
+                reference=UniqueId.generate_id(),
+                duration=duration,
+                end_date=end_date,
+                plan=sub_plan,
+                total_amount=duration * price,
             )
             order.save()
+
             return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+
+        except Plan.DoesNotExist:
+            return Response(
+                {"error": "The selected plan does not exist."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except Exception as e:
-            return Response({"error": str(e)}, status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {
+                    "error": "An error occurred while creating the order.",
+                    "details": str(e),
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

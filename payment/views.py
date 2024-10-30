@@ -64,7 +64,7 @@ class PaymentViewSets(viewsets.ViewSet):
     def create_payment(self, request, *args, **kwargs):
         # Attempt to get the user's order
         try:
-            order = Order.objects.get(user=request.user)
+            order = Order.objects.get(user=request.user, paid=False)
         except Order.DoesNotExist:
             return Response(
                 {"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND
@@ -138,43 +138,56 @@ class PaystackWebhookView(APIView):
         if event == "charge.success":
             transaction_id = data.get("reference")
             try:
-                payment = Payment.objects.get(transaction_id=transaction_id)
-                order = payment.order
-
-                # Handling the 'paid_at' field
-                paid_at = data.get("paid_at")
-                try:
-                    # Try parsing with microseconds
-                    paid_at_datetime = datetime.strptime(
-                        paid_at, "%Y-%m-%dT%H:%M:%S.%fZ"
-                    )
-                except ValueError:
-                    # Fallback for when there are no microseconds
-                    paid_at_datetime = datetime.strptime(
-                        paid_at, "%Y-%m-%dT%H:%M:%S.%fZ"[:-3]
-                    )
-
-                # Convert the naive datetime to an aware datetime with the current timezone
-                paid_at_datetime = timezone.make_aware(
-                    paid_at_datetime, dt_timezone.utc
+                response = requests.get(
+                    f"https://api.paystack.co/transaction/verify/{transaction_id}",
+                    headers={
+                        "Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}",
+                        "Content-Type": "application/json",
+                    },
                 )
-                paid_at_datetime = timezone.localtime(paid_at_datetime)
+                if response.status_code == 200:
+                    payment_verification = response.json()
+                    payment_is_valid = payment_verification["data"]["status"]
+                    if payment_is_valid == "success":
+                        payment = Payment.objects.get(transaction_id=transaction_id)
+                        order = payment.order
 
-                if order.plan.name == "Annual":
-                    payment.expiration_date = paid_at_datetime + relativedelta(years=1)
-                else:
-                    duration = order.duration
-                    payment.expiration_date = paid_at_datetime + relativedelta(
-                        months=duration
-                    )
-                payment.timestamp = paid_at_datetime
-                payment.verified = True
-                payment.save()
-                order.paid = True
-                order.user.is_paiduser = True
-                order.end_date = paid_at_datetime + relativedelta(years=1)
-                order.order_status = "Completed"
-                order.save()
+                        # Handling the 'paid_at' field
+                        paid_at = data.get("paid_at")
+                        try:
+                            # Try parsing with microseconds
+                            paid_at_datetime = datetime.strptime(
+                                paid_at, "%Y-%m-%dT%H:%M:%S.%fZ"
+                            )
+                        except ValueError:
+                            # Fallback for when there are no microseconds
+                            paid_at_datetime = datetime.strptime(
+                                paid_at, "%Y-%m-%dT%H:%M:%S.%fZ"[:-3]
+                            )
+
+                        # Convert the naive datetime to an aware datetime with the current timezone
+                        paid_at_datetime = timezone.make_aware(
+                            paid_at_datetime, dt_timezone.utc
+                        )
+                        paid_at_datetime = timezone.localtime(paid_at_datetime)
+
+                        if order.plan.name == "Annual":
+                            payment.expiration_date = paid_at_datetime + relativedelta(
+                                years=1
+                            )
+                        else:
+                            duration = order.duration
+                            payment.expiration_date = paid_at_datetime + relativedelta(
+                                months=duration
+                            )
+                        payment.timestamp = paid_at_datetime
+                        payment.verified = True
+                        payment.save()
+                        order.paid = True
+                        order.user.is_paiduser = True
+                        order.end_date = paid_at_datetime + relativedelta(years=1)
+                        order.order_status = "Completed"
+                        order.save()
 
             except Payment.DoesNotExist:
                 return Response(

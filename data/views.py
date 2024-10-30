@@ -3,13 +3,10 @@ import hashlib
 import faker_commerce
 from faker import Faker
 from rest_framework import status
-from rest_framework.exceptions import Throttled
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from commons.renderer import CsvRenderer, ExcelRenderer, PdfRenderer
 from commons.throttles import (
