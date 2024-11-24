@@ -43,7 +43,8 @@ class FreeUserRateThrottle(SimpleRateThrottle):
 
         return self.cache_format % {"scope": self.scope, "ident": ident}
 
+
 class PaidUserRateThrottle(FreeUserRateThrottle):
-    scope = 'paid'
-    rate = '2000/min'
+    scope = "paid"
+    rate = "2000/min"
     max_data_range = 10000

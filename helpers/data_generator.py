@@ -42,5 +42,3 @@ class DataGenerator:
             "stock": self.fake.random_int(min=0, max=1000),
             "sku": self.fake.ean13(),
         }
-
-

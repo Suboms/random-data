@@ -4,9 +4,6 @@ from django.db import models
 # Create your models here.
 
 
-
-
-
 class UserSavedData(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=False

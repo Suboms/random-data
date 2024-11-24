@@ -1,9 +1,11 @@
 from django.urls import get_resolver
+from drf_spectacular.utils import OpenApiTypes, extend_schema, extend_schema_view
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import APIView
 
 
+@extend_schema_view(get=extend_schema(exclude=True))
 class UrlsListView(APIView):
 
     def get(self, request, format=None):

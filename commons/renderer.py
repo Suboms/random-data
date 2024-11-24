@@ -6,8 +6,14 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import (PageBreak, Paragraph, SimpleDocTemplate,
-                                Spacer, Table, TableStyle)
+from reportlab.platypus import (
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 from rest_framework.renderers import BaseRenderer
 
 
@@ -24,7 +30,6 @@ class ExcelRenderer(BaseRenderer):
         output = BytesIO()
         with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
             for data_type, data_list in data["data"].items():
-                print(data_list)
                 df = pd.DataFrame(data=data_list)
                 df.columns = [col.title() for col in df.columns]
                 df.to_excel(writer, sheet_name=data_type.title(), index=False)
@@ -33,7 +38,6 @@ class ExcelRenderer(BaseRenderer):
 
         # Return the output stream as the response
         return output.read()
-
 
 
 class CsvRenderer(BaseRenderer):
@@ -48,7 +52,7 @@ class CsvRenderer(BaseRenderer):
         zip_buffer = BytesIO()
 
         # Create a ZipFile object
-        with ZipFile(zip_buffer, 'w') as zip_file:
+        with ZipFile(zip_buffer, "w") as zip_file:
             # Iterate through each dataset and generate a separate CSV file for each
             for data_type, data_list in data["data"].items():
                 if not data_list:
@@ -56,7 +60,9 @@ class CsvRenderer(BaseRenderer):
 
                 # Convert data to DataFrame
                 df = pd.DataFrame(data=data_list)
-                df.columns = [col.title() for col in df.columns]  # Title case the column names
+                df.columns = [
+                    col.title() for col in df.columns
+                ]  # Title case the column names
 
                 # Create a BytesIO buffer for each CSV file
                 csv_buffer = BytesIO()
@@ -74,8 +80,6 @@ class CsvRenderer(BaseRenderer):
         return zip_buffer.read()
 
 
-
-
 class PdfRenderer(BaseRenderer):
     media_type = "application/pdf"
     format = "pdf"
@@ -89,7 +93,6 @@ class PdfRenderer(BaseRenderer):
 
         # Create an in-memory output stream for the PDF
         output = BytesIO()
-       
 
         # Setup PDF document
         document = SimpleDocTemplate(
@@ -99,10 +102,10 @@ class PdfRenderer(BaseRenderer):
             leftMargin=30,
             topMargin=30,
             bottomMargin=18,
-            title="Data Report" 
+            title="Data Report",
         )
         document.pagesize = landscape(A4)
-        
+
         styles = getSampleStyleSheet()
         title_style = styles["Title"]
         normal_style = styles["BodyText"]
@@ -131,11 +134,14 @@ class PdfRenderer(BaseRenderer):
 
             for item in val:
                 row = [
-                    Paragraph(str(item.get(header.lower().replace(" ", "_"), "")), normal_style)
+                    Paragraph(
+                        str(item.get(header.lower().replace(" ", "_"), "")),
+                        normal_style,
+                    )
                     for header in headers
                 ]
                 table_data.append(row)
-                
+
             table = Table(table_data)
             table.setStyle(
                 TableStyle(
@@ -161,5 +167,3 @@ class PdfRenderer(BaseRenderer):
         document.build(elements)
         output.seek(0)  # Reset the stream's position to the beginnin
         return output.getvalue()
-
-

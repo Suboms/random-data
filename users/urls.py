@@ -1,8 +1,7 @@
 from rest_framework.routers import DefaultRouter, SimpleRouter
 from rest_framework.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
+from users.views import CreateUserViewSet, MyTokenObtainPairView, TokenVerifyView, TokenRefreshView
 
-from users.views import CreateUserViewSet, MyTokenObtainPairView
 
 router = DefaultRouter()
 router.register(r"", CreateUserViewSet)

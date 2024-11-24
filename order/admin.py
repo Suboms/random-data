@@ -1,10 +1,12 @@
 from django.contrib import admin
 
-from .models import Order, Plan
+from .models import Order, Subscription
 
 
 # Register your models here.
 class OrderAdmin(admin.ModelAdmin):
-    readonly_fields = ['created_at']
+    readonly_fields = ["id", "created_at"]
+
+
 admin.site.register(Order, OrderAdmin)
-admin.site.register(Plan)
+admin.site.register(Subscription)

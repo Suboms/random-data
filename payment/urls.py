@@ -8,5 +8,4 @@ router.register(r"", PaymentViewSets, basename="payments")
 
 urlpatterns = [
     path("", include(router.urls)),
-    
 ]

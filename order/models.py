@@ -12,31 +12,37 @@ class OrderStatus(models.TextChoices):
     COMPLETED = "Completed"
     CANCELLED = "Cancelled"
 
-class PlanChoice(models.TextChoices):
+
+class SubscriptionType(models.TextChoices):
     MONTHLY = "Monthly"
-    ANNUALY = "Annualy"
+    ANNUAL = "Annual"
 
-class Plan(TimeStampedModel):
-    name = models.CharField(max_length=20, default="Annual")
-    price = models.DecimalField(max_digits=10, decimal_places=2)  # price for the plan
 
-    def __str__(self) -> str:
-        return f'{self.name}'
+class Subscription(models.Model):
+    name = models.CharField(choices=SubscriptionType.choices, max_length=20)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.name.capitalize()} Subscription"
+
+    class Meta:
+        verbose_name = "Subscription"
+        verbose_name_plural = "Subscriptions"
+
 
 class Order(TimeStampedModel):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=False
-    )
-    plan = models.ForeignKey(Plan, on_delete=models.CASCADE, null=False)
-    reference = models.UUIDField(max_length=100, unique=True)
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # Total amount for the order
-    duration = models.IntegerField()
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    reference = models.UUIDField(unique=True, editable=False)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     paid = models.BooleanField(default=False)
-    order_status = models.CharField(max_length=20, choices=OrderStatus.choices, default=OrderStatus.PENDING)
+    subscription = models.ForeignKey(
+        Subscription, on_delete=models.CASCADE, related_name="orders"
+    )
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField()
 
     class Meta:
         ordering = ("created_at",)
+
     def __str__(self):
         return f"Order {self.reference}"

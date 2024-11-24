@@ -1,13 +1,14 @@
 import logging
 import time
 
+from rest_framework.metadata import BaseMetadata
+
 logger = logging.getLogger(__name__)
 
 
 class RequestTimingMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
-
 
     def __call__(self, request):
         start_time = time.time()

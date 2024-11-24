@@ -12,7 +12,7 @@ class PaymentAdmin(admin.ModelAdmin):
         "transaction_id",
         "verified",
         "timestamp",
-        "expiration_date"
+        "expiration_date",
     )
 
 

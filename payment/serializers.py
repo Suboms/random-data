@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from rest_framework import serializers
 
 from order.models import Order
@@ -11,6 +13,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     currency = serializers.CharField(read_only=True)
     transaction_id = serializers.CharField(read_only=True)
     verified = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = Payment
         fields = "__all__"
